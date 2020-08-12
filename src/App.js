@@ -33,6 +33,7 @@ function App() {
   const [modalStyle] = useState(getModalStyle);
   const [posts, setPosts] = useState([]);
   const [open, setOpen] = useState(false);
+  const [openSignIn, setOpenSignIn] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [email, setEmail] = useState("");
@@ -42,12 +43,6 @@ function App() {
     const unsubscribe = auth.onAuthStateChanged((authUser) => {
       if (authUser) {
         setUser(authUser);
-        if (authUser.displayName) {
-        } else {
-          return authUser.updateProfile({
-            displayName: username,
-          });
-        }
       } else {
         setUser(null);
       }
@@ -59,7 +54,12 @@ function App() {
 
   useEffect(() => {
     db.collection("posts").onSnapshot((snapshot) => {
-      setPosts(snapshot.docs.map((doc) => doc.data()));
+      setPosts(
+        snapshot.docs.map((doc) => ({
+          id: doc.id,
+          post: doc.data(),
+        }))
+      );
     });
   }, []);
 
@@ -67,7 +67,18 @@ function App() {
     event.preventDefault();
     auth
       .createUserWithEmailAndPassword(email, password)
+      .then((authUser) => {
+        return authUser.user.updateProfile({ displayName: username });
+      })
       .catch((error) => alert(error.message));
+  };
+
+  const signIn = (event) => {
+    event.preventDefault();
+    auth
+      .signInWithEmailAndPassword(email, password)
+      .catch((error) => alert(error.message));
+    setOpenSignIn(false);
   };
 
   return (
@@ -114,6 +125,42 @@ function App() {
           </form>
         </div>
       </Modal>
+
+      <Modal open={openSignIn} onClose={() => setOpenSignIn(false)}>
+        <div style={modalStyle} className={classes.paper}>
+          <form className="app__signup">
+            <center>
+              <img
+                className="app__headerImage"
+                src="https://www.instagram.com/static/images/web/mobile_nav_type_logo.png/735145cfe0a4.png"
+                alt="Instagram logo"
+              />
+              {""}
+              <br />
+              <Input
+                placeholder="email address"
+                type="text"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              {""}
+              <br />
+              <Input
+                placeholder="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              {""}
+              <br />
+              <Button type="submit" onClick={signIn}>
+                Sign In
+              </Button>
+            </center>
+          </form>
+        </div>
+      </Modal>
+
       <div className="app__header">
         <img
           className="app__headerImage"
@@ -122,10 +169,18 @@ function App() {
         />
       </div>
 
-      <Button onClick={() => setOpen(true)}>Sign Up</Button>
+      {user ? (
+        <Button onClick={() => auth.signOut()}>Sign Out</Button>
+      ) : (
+        <div className="app_loginContainer">
+          <Button onClick={() => setOpenSignIn(true)}>Sign In</Button>
+          <Button onClick={() => setOpen(true)}>Sign Up</Button>
+        </div>
+      )}
 
-      {posts.map((post) => (
+      {posts.map(({ id, post }) => (
         <Post
+          key={id}
           username={post.username}
           imageUrl={post.imageUrl}
           caption={post.caption}
