@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from "react";
 import "./App.css";
 import Post from "./Post";
-import { db } from "./firebase";
+import { db, auth } from "./firebase";
 import { makeStyles } from "@material-ui/core/styles";
 import Modal from "@material-ui/core/Modal";
-import { Button } from "@material-ui/core";
+import { Button, Input } from "@material-ui/core";
 
 function getModalStyle() {
-  const top = 50;
-  const left = 50;
+  const top = 100;
+  const left = 100;
 
   return {
     top: `${top}`,
@@ -33,25 +33,85 @@ function App() {
   const [modalStyle] = useState(getModalStyle);
   const [posts, setPosts] = useState([]);
   const [open, setOpen] = useState(false);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("");
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((authUser) => {
+      if (authUser) {
+        setUser(authUser);
+        if (authUser.displayName) {
+        } else {
+          return authUser.updateProfile({
+            displayName: username,
+          });
+        }
+      } else {
+        setUser(null);
+      }
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, [user, username]);
 
   useEffect(() => {
     db.collection("posts").onSnapshot((snapshot) => {
-      setPosts(
-        snapshot.docs.map((doc) => ({
-          id: doc.id,
-          post: doc.data(),
-        }))
-      );
+      setPosts(snapshot.docs.map((doc) => doc.data()));
     });
   }, []);
 
-  const signUp = (event) => {};
+  const signUp = (event) => {
+    event.preventDefault();
+    auth
+      .createUserWithEmailAndPassword(email, password)
+      .catch((error) => alert(error.message));
+  };
 
   return (
     <div className="app">
       <Modal open={open} onClose={() => setOpen(false)}>
         <div style={modalStyle} className={classes.paper}>
-          <h2>I am a modal</h2>
+          <form className="app__signup">
+            <center>
+              <img
+                className="app__headerImage"
+                src="https://www.instagram.com/static/images/web/mobile_nav_type_logo.png/735145cfe0a4.png"
+                alt="Instagram logo"
+              />
+              {""}
+              <br />
+              <Input
+                placeholder="username"
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+              />
+              {""}
+              <br />
+              <Input
+                placeholder="email address"
+                type="text"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              {""}
+              <br />
+              <Input
+                placeholder="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              {""}
+              <br />
+              <Button type="submit" onClick={signUp}>
+                Sign Up
+              </Button>
+            </center>
+          </form>
         </div>
       </Modal>
       <div className="app__header">
@@ -64,30 +124,13 @@ function App() {
 
       <Button onClick={() => setOpen(true)}>Sign Up</Button>
 
-      {posts.map(({ id, post }) => (
+      {posts.map((post) => (
         <Post
-          key={id}
           username={post.username}
           imageUrl={post.imageUrl}
           caption={post.caption}
         />
       ))}
-
-      {/* <Post
-        username="cmcodes"
-        imageUrl="https://upload.wikimedia.org/wikipedia/commons/3/35/Neckertal_20150527-6384.jpg"
-        caption=" Hello people of the world!"
-      />
-      <Post
-        username="virtualvivek"
-        imageUrl="https://upload.wikimedia.org/wikipedia/commons/3/35/Neckertal_20150527-6384.jpg"
-        caption=" Hi! I am Vivek!"
-      />
-      <Post
-        username="tanaypratap"
-        imageUrl="https://upload.wikimedia.org/wikipedia/commons/3/35/Neckertal_20150527-6384.jpg"
-        caption=" Code!"
-      /> */}
     </div>
   );
 }
